@@ -123,6 +123,24 @@ int main(){
                         ){
                             cout<<"DRAW"<<endl;
                         }
+
+                        // insufficient material
+
+                        if(insufficient_material()){
+                            cout<<"DRAW"<<endl;
+                        }
+
+                        // 50 move rule
+
+                        if(fifty_move_rule()){
+                            cout<<"DRAW"<<endl;
+                        }
+
+                        // repetition
+
+                        if(threefold_repetition()){
+                            cout<<"DRAW"<<endl;
+                        }
                     }
 
                         pieceSelected = false;

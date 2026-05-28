@@ -1,3 +1,5 @@
+#include <map>
+#include <string>
 #pragma once
 
 extern char board[8][8];
@@ -23,3 +25,9 @@ bool has_legal_move(bool white);
 bool is_checkmate(bool white);
 
 bool is_stalemate(bool white);
+
+bool fifty_move_rule();
+
+bool threefold_repetition();
+
+bool insufficient_material();

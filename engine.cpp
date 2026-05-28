@@ -1,5 +1,6 @@
 #include "engine.hpp"
-
+#include <map>
+#include <string>
 #include <utility>
 #include <vector>
 #include <algorithm>
@@ -7,12 +8,24 @@
 
 using namespace std;
 
+// repetition
+
+map<string,int> boardCount;
+
+string get_board_string();
+
+bool repetitionInitialized = false;
+
 bool is_white_move = true;
 
 // en passant
 
 int enPassantRow = -1;
 int enPassantCol = -1;
+
+// 50 move rule
+
+int halfMoveClock = 0;
 
 // castling info
 
@@ -40,7 +53,18 @@ char board[8][8] = {
 
 void move_piece(int a,int b,int x,int y){
 
+    if(!repetitionInitialized){
+
+        boardCount[
+            get_board_string()
+        ]++;
+
+        repetitionInitialized = true;
+    }
+
     char piece = board[a][b];
+
+    char captured = board[x][y];
 
     // castling moved info
 
@@ -159,7 +183,26 @@ void move_piece(int a,int b,int x,int y){
         board[x][y] = 'q';
     }
 
+    // 50 move rule
+
+    if(piece == 'P' ||
+    piece == 'p' ||
+    captured != '.')
+    {
+        halfMoveClock = 0;
+    }
+    else{
+        halfMoveClock++;
+    }
+
     is_white_move = !is_white_move;
+
+    // repetition
+
+    boardCount[
+        get_board_string()
+    ]++;
+
 }
 
 // rook
@@ -700,6 +743,22 @@ bool valid(int a,int b,int x,int y){
     char piece =
         board[a][b];
 
+    // en passant temporary capture
+
+    if(piece == 'P' &&
+    y != b &&
+    captured == '.')
+    {
+        board[x+1][y] = '.';
+    }
+
+    if(piece == 'p' &&
+    y != b &&
+    captured == '.')
+    {
+        board[x-1][y] = '.';
+    }
+
     board[x][y] = piece;
 
     board[a][b] = '.';
@@ -716,6 +775,22 @@ bool valid(int a,int b,int x,int y){
     board[a][b] = piece;
 
     board[x][y] = captured;
+
+    // restore en passant capture
+
+    if(piece == 'P' &&
+    y != b &&
+    captured == '.')
+    {
+        board[x+1][y] = 'p';
+    }
+
+    if(piece == 'p' &&
+    y != b &&
+    captured == '.')
+    {
+        board[x-1][y] = 'P';
+    }
 
     return !check;
 }
@@ -804,4 +879,83 @@ bool is_stalemate(bool white){
     }
 
     return false;
+}
+
+// insufficient material
+
+bool insufficient_material(){
+
+    vector<char> pieces;
+
+    for(int i=0;i<8;i++){
+
+        for(int j=0;j<8;j++){
+
+            if(board[i][j] != '.'){
+                pieces.push_back(board[i][j]);
+            }
+        }
+    }
+
+    // king vs king
+
+    if(pieces.size() == 2)
+        return true;
+
+    // king + bishop vs king
+
+    if(pieces.size() == 3){
+
+        for(char piece : pieces){
+
+            if(piece == 'B' ||
+               piece == 'b' ||
+               piece == 'N' ||
+               piece == 'n')
+            {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+// 50 move rule
+
+bool fifty_move_rule(){
+
+    return (
+        halfMoveClock >= 100
+    );
+}
+
+// board state string
+
+string get_board_string(){
+
+    string s;
+
+    for(int i=0;i<8;i++){
+
+        for(int j=0;j<8;j++){
+
+            s += board[i][j];
+        }
+    }
+
+    s += (is_white_move ? 'w' : 'b');
+
+    return s;
+}
+
+// threefold repetition
+
+bool threefold_repetition(){
+
+    return (
+        boardCount[
+            get_board_string()
+        ] >= 3
+    );
 }
