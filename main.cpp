@@ -1,157 +1,300 @@
 #include <iostream>
-#include <vector>
-#include <algorithm>
-#include <cmath>
+#include <SFML/Graphics.hpp>
+#include "engine.hpp"
+#include <optional>
+#include <map>
+
 using namespace std;
 
-bool is_white_move = true;
+// selection
 
-char board[8][8] = {
-    {'r','n','b','q','k','b','n','r'},
-    {'p','p','p','p','p','p','p','p'},
-    {'.','.','.','.','.','.','.','.'},
-    {'.','.','.','.','.','.','.','.'},
-    {'.','.','.','.','.','.','.','.'},
-    {'.','.','.','.','.','.','.','.'},
-    {'P','P','P','P','P','P','P','P'},
-    {'R','N','B','Q','K','B','N','R'}
-};
+bool pieceSelected = false;
 
+int selectedRow = -1;
+int selectedCol = -1;
 
-void move_piece(int a,int b,int x,int y){
-    board[x][y] = board[a][b];
-    board[a][b] = '.';
-}
+int main(){
 
-bool check_for_rook(int a,int b,int x,int y){
-    if(a==x){
-        for(int j = min(b,y) + 1;j<max(b,y);j++){
-            if(board[a][j] != '.') return false;
+    // window
+
+    sf::RenderWindow window(
+        sf::VideoMode({800,800}),
+        "Chess"
+    );
+
+    // textures
+
+    map<char,sf::Texture> textures;
+
+    textures['P'].loadFromFile("pieces-basic-svg/pawn-w.png");
+    textures['R'].loadFromFile("pieces-basic-svg/rook-w.png");
+    textures['N'].loadFromFile("pieces-basic-svg/knight-w.png");
+    textures['B'].loadFromFile("pieces-basic-svg/bishop-w.png");
+    textures['Q'].loadFromFile("pieces-basic-svg/queen-w.png");
+    textures['K'].loadFromFile("pieces-basic-svg/king-w.png");
+
+    textures['p'].loadFromFile("pieces-basic-svg/pawn-b.png");
+    textures['r'].loadFromFile("pieces-basic-svg/rook-b.png");
+    textures['n'].loadFromFile("pieces-basic-svg/knight-b.png");
+    textures['b'].loadFromFile("pieces-basic-svg/bishop-b.png");
+    textures['q'].loadFromFile("pieces-basic-svg/queen-b.png");
+    textures['k'].loadFromFile("pieces-basic-svg/king-b.png");
+
+    // game loop
+
+    while(window.isOpen()){
+
+        // events
+
+        while(const optional event =
+              window.pollEvent()){
+
+            // close
+
+            if(event->is<sf::Event::Closed>()){
+                window.close();
+            }
+
+            // mouse click
+
+            if(const auto* mousePressed =
+                event->getIf<
+                sf::Event::MouseButtonPressed>())
+            {
+                if(mousePressed->button ==
+                    sf::Mouse::Button::Left)
+                {
+                    int x =
+                        mousePressed->position.x;
+
+                    int y =
+                        mousePressed->position.y;
+
+                    int row = y / 100;
+                    int col = x / 100;
+
+                    // first click
+
+                    if(!pieceSelected){
+
+                        if(board[row][col] != '.'){
+
+                            selectedRow = row;
+                            selectedCol = col;
+
+                            pieceSelected = true;
+                        }
+                    }
+
+                    // second click
+
+                    else{
+
+                    if(valid(
+                        selectedRow,
+                        selectedCol,
+                        row,
+                        col
+                    )){
+                        move_piece(
+                            selectedRow,
+                            selectedCol,
+                            row,
+                            col
+                        );
+
+                        // black checkmate
+
+                        if(is_checkmate(false)){
+                            cout<<"WHITE WINS"<<endl;
+                        }
+
+                        // white checkmate
+
+                        if(is_checkmate(true)){
+                            cout<<"BLACK WINS"<<endl;
+                        }
+
+                        // stalemate
+
+                        if(
+                            is_stalemate(true) ||
+                            is_stalemate(false)
+                        ){
+                            cout<<"DRAW"<<endl;
+                        }
+                    }
+
+                        pieceSelected = false;
+                    }
+                }
+            }
         }
-    }
-    else if(b==y){
-        for(int i = min(a,x) + 1;i<max(a,x);i++){
-            if(board[i][b] != '.') return false;
+
+        window.clear();
+
+        // draw board
+
+        for(int i=0;i<8;i++){
+
+            for(int j=0;j<8;j++){
+
+                sf::RectangleShape square;
+
+                square.setSize(
+                    sf::Vector2f(100.f,100.f)
+                );
+
+                square.setPosition(
+                    sf::Vector2f(
+                        j * 100,
+                        i * 100
+                    )
+                );
+
+                // normal colors
+
+                if((i+j)%2==0){
+                    square.setFillColor(
+                        sf::Color::White
+                    );
+                }
+                else{
+                    square.setFillColor(
+                        sf::Color(100,100,100)
+                    );
+                }
+
+                // selected square
+
+                if(
+                    pieceSelected &&
+                    i == selectedRow &&
+                    j == selectedCol
+                ){
+                    square.setFillColor(
+                        sf::Color(100,200,100)
+                    );
+                }
+
+                // capture square
+
+                if(
+                    pieceSelected &&
+                    valid(
+                        selectedRow,
+                        selectedCol,
+                        i,
+                        j
+                    ) &&
+                    board[i][j] != '.'
+                ){
+                    square.setFillColor(
+                        sf::Color(200,100,100)
+                    );
+                }
+
+                // check square
+
+                if(
+                    board[i][j] == 'K' &&
+                    is_in_check(true)
+                ){
+                    square.setFillColor(
+                        sf::Color(255,100,100)
+                    );
+                }
+
+                if(
+                    board[i][j] == 'k' &&
+                    is_in_check(false)
+                ){
+                    square.setFillColor(
+                        sf::Color(255,100,100)
+                    );
+                }
+
+                window.draw(square);
+
+                // legal move dots
+
+                if(
+                    pieceSelected &&
+                    valid(
+                        selectedRow,
+                        selectedCol,
+                        i,
+                        j
+                    )
+                ){
+
+                    sf::CircleShape circle;
+
+                    circle.setRadius(15.f);
+
+                    if(board[i][j] != '.'){
+                        circle.setFillColor(
+                            sf::Color(255,0,0,180)
+                        );
+                    }
+                    else{
+                        circle.setFillColor(
+                            sf::Color(50,50,50,150)
+                        );
+                    }
+
+                    circle.setPosition(
+                        sf::Vector2f(
+                            j * 100 + 35,
+                            i * 100 + 35
+                        )
+                    );
+
+                    window.draw(circle);
+                }
+            }
         }
-    }
-    else return false;
-    return true;
-}
 
-bool check_for_bishop(int a,int b,int x,int y){
-    if(abs(y-b) == abs(x-a)){
-        int dx = 1,dy = 1;
-        if(x<a) dx = -1;
-        if(y<b) dy = -1;
+        // draw pieces
 
-        a += dx,b+= dy;
-        while(a!=x && b!= y){
-            if(board[a][b] != '.') return false;
-            a += dx,b+= dy;
-        }
-        return true;
-    }
-    return false;
-}
+        for(int i=0;i<8;i++){
 
-bool check_for_knight(int a,int b,int x,int y){
-    vector<pair<int,int>> v{
-        {1,2},{2,1},
-        {-1,2},{-2,1},
-        {1,-2},{2,-1},
-        {-1,-2},{-2,-1},
-    };
-    for(auto it:v){
-        int dx = it.first , dy = it.second;
-        if(a+dx == x && b+dy == y) return true;
-    }
-    return false;
-}
+            for(int j=0;j<8;j++){
 
-bool check_for_pawn(int a,int b,int x,int y){
-    if(board[a][b]>='a' && board[a][b] <= 'z'){
-        if(b==y){
-            if(x-a==2 && a==1 && board[a+1][b] =='.' && board[a+2][b]=='.') return true;
-            if(x-a==1 && board[x][y] == '.') return true;
-            return false;
-        }
-        else if(abs(b-y)==1 && a+1 == x && board[x][y]!='.') return true;
-        return false;
-    }
-    else{
-        if(b==y){
-            if(a-x==2 && a==6 && board[a-1][b] =='.' && board[a-2][b] == '.') return true;
-            if(a-x==1 && board[x][y] == '.') return true;
-            return false;
-        }
-        else if(abs(b-y)==1 && a-1==x && board[x][y]!='.') return true;
-        return false;
-    }
-}
+                if(board[i][j] == '.')
+                    continue;
 
-bool check_for_king(int a,int b,int x,int y){
-    if(abs(x-a)<=1 && abs(y-b)<=1) return true;
-    return false;
-}
+                sf::Sprite piece(
+                    textures[board[i][j]]
+                );
 
-bool valid(int a,int b, int x,int y){
-    if(min(a,b)<0 || max(a,b)>7 || min(x,y)<0 || max(x,y)>7) return false;
-    if(a==x && b==y) return false;
-    if(board[a][b] == '.') return false;
-    if(board[a][b] >= 'A' && board[a][b] <= 'Z' && !is_white_move) return false;
-    if(board[a][b] >= 'a' && board[a][b] <= 'z' && is_white_move) return false;
-    if(board[a][b] >= 'a' && board[a][b] <= 'z' && board[x][y] >= 'a' && board[x][y] <= 'z' ) return false;
-    if(board[a][b] >= 'A' && board[a][b] <= 'Z' && board[x][y] >= 'A' && board[x][y] <= 'Z' ) return false;
+                sf::Vector2u textureSize =
+                    textures[
+                        board[i][j]
+                    ].getSize();
 
-    if(board[a][b] == 'R' || board[a][b] == 'r') return check_for_rook(a,b,x,y);
-    if(board[a][b] == 'B' || board[a][b] == 'b') return check_for_bishop(a,b,x,y);
-    if(board[a][b] == 'Q' || board[a][b] == 'q') return (check_for_rook(a,b,x,y) || check_for_bishop(a,b,x,y));
-    if(board[a][b] == 'N' || board[a][b] == 'n') return check_for_knight(a,b,x,y);
-    if(board[a][b] == 'P' || board[a][b] == 'p') return check_for_pawn(a,b,x,y);
-    if(board[a][b] == 'K' || board[a][b] == 'k') return check_for_king(a,b,x,y);
-    return false;
-}
+                piece.setScale(
+                    sf::Vector2f(
+                        100.f / textureSize.x,
+                        100.f / textureSize.y
+                    )
+                );
 
-void printBoard() {
+                piece.setPosition(
+                    sf::Vector2f(
+                        j * 100,
+                        i * 100
+                    )
+                );
 
-    cout << "\n";
-
-    for(int i=0;i<8;i++) {
-
-        cout << 8-i << " ";
-
-        for(int j=0;j<8;j++) {
-            cout << board[i][j] << " ";
+                window.draw(piece);
+            }
         }
 
-        cout << "\n";
+        // display
+
+        window.display();
     }
 
-    cout << "  a b c d e f g h\n";
-}
-
-int main() {
-    printBoard();
-    int t = 10;
-    cin>>t;
-    cin.ignore();
-    while(t--){
-
-        string s;
-        getline(cin,s);
-
-        int b = s[0] - 'a',a = 8 - (s[1] - '0'),d = s[3] - 'a',c = 8 - (s[4] -'0');
-        
-        if(valid(a,b,c,d)){
-            move_piece(a,b,c,d);
-            is_white_move = !is_white_move;
-            printBoard();
-        }
-        else{
-            cout<<endl;
-            cout<<"wrong move.."<<endl;
-            cout<<endl;
-        }
-    }
     return 0;
 }
