@@ -185,15 +185,21 @@ private:
 
 inline Game::Game()
     : board_()
-{}
+{
+    update_result();
+}
 
 inline Game::Game(const Position& start)
     : board_(start)
-{}
+{
+    update_result();
+}
 
 inline Game::Game(const std::string& fen)
     : board_(Position::from_fen(fen))
-{}
+{
+    update_result();
+}
 
 inline bool Game::make_move(const Move& m)
 {
