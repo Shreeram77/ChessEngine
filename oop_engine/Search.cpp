@@ -145,9 +145,11 @@ namespace
             compute_hash(pos);
 
         if (probe_tt(
-                hash,
-                depth,
-                cached_score))
+            hash,
+            depth,
+            alpha,
+            beta,
+            cached_score))
         {
             return cached_score;
         }
@@ -160,15 +162,27 @@ namespace
         {
             if (board.is_in_check(pos.side_to_move))
             {
-                if (pos.side_to_move == Color::White)
-                    return -MATE_SCORE - depth;
+                int score;
 
-                return MATE_SCORE + depth;
+                if (pos.side_to_move == Color::White)
+                    score = -MATE_SCORE - depth;
+                else
+                    score = MATE_SCORE + depth;
+
+                store_tt(
+                    hash,
+                    depth,
+                    score,
+                    TTFlag::Exact);
+
+                return score;
             }
+
             store_tt(
                 hash,
                 depth,
-                0);
+                0,
+                TTFlag::Exact);
 
             return 0;
         }
@@ -213,7 +227,8 @@ namespace
             store_tt(
                 hash,
                 depth,
-                best);
+                best,
+                TTFlag::Exact);
 
             return best;
         }
@@ -243,7 +258,8 @@ namespace
             store_tt(
                 hash,
                 depth,
-                best);
+                best,
+                TTFlag::Exact);
 
             return best;
         }
@@ -276,6 +292,20 @@ Move find_best_move(
     Move best_move = moves.front();
 
     Move last_best_move = best_move;
+
+    auto it =
+        std::find(
+            moves.begin(),
+            moves.end(),
+            best_move);
+
+    if (it != moves.end())
+    {
+        std::rotate(
+            moves.begin(),
+            it,
+            it + 1);
+    }
 
     for (int current_depth = 1;
         current_depth <= depth;

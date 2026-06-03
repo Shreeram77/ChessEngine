@@ -9,6 +9,8 @@ namespace
 bool probe_tt(
     uint64_t hash,
     int depth,
+    int alpha,
+    int beta,
     int& score)
 {
     auto it =
@@ -20,14 +22,37 @@ bool probe_tt(
     if (it->second.depth < depth)
         return false;
 
-    score = it->second.score;
-    return true;
+    const TTEntry& entry =
+        it->second;
+
+    if (entry.flag == TTFlag::Exact)
+    {
+        score = entry.score;
+        return true;
+    }
+
+    if (entry.flag == TTFlag::LowerBound &&
+        entry.score >= beta)
+    {
+        score = entry.score;
+        return true;
+    }
+
+    if (entry.flag == TTFlag::UpperBound &&
+        entry.score <= alpha)
+    {
+        score = entry.score;
+        return true;
+    }
+
+    return false;
 }
 
 void store_tt(
     uint64_t hash,
     int depth,
-    int score)
+    int score,
+    TTFlag flag)
 {
     auto it =
         transposition_table.find(hash);
@@ -42,7 +67,8 @@ void store_tt(
     {
         hash,
         depth,
-        score
+        score,
+        flag
     };
 }
 
