@@ -246,53 +246,62 @@ Move find_best_move(
 
     Move best_move = moves.front();
 
-    if (pos.side_to_move == Color::White)
+    Move last_best_move = best_move;
+
+    for (int current_depth = 1;
+        current_depth <= depth;
+        ++current_depth)
     {
-        int best_score =
-            NEG_INF;
+        best_move = moves.front();
 
-        for (const auto& move : moves)
+        if (pos.side_to_move == Color::White)
         {
-            Position next =
-                board.apply_move(move);
+            int best_score = NEG_INF;
 
-            int score =
-                minimax(
-                    next,
-                    depth - 1,
-                    NEG_INF,
-                    POS_INF);
-
-            if (score > best_score)
+            for (const auto& move : moves)
             {
-                best_score = score;
-                best_move = move;
+                Position next =
+                    board.apply_move(move);
+
+                int score =
+                    minimax(
+                        next,
+                        current_depth - 1,
+                        NEG_INF,
+                        POS_INF);
+
+                if (score > best_score)
+                {
+                    best_score = score;
+                    best_move = move;
+                }
             }
         }
-    }
-    else
-    {
-        int best_score =
-            POS_INF;
-
-        for (const auto& move : moves)
+        else
         {
-            Position next =
-                board.apply_move(move);
+            int best_score = POS_INF;
 
-            int score =
-                minimax(
-                    next,
-                    depth - 1,
-                    NEG_INF,
-                    POS_INF);
-
-            if (score < best_score)
+            for (const auto& move : moves)
             {
-                best_score = score;
-                best_move = move;
+                Position next =
+                    board.apply_move(move);
+
+                int score =
+                    minimax(
+                        next,
+                        current_depth - 1,
+                        NEG_INF,
+                        POS_INF);
+
+                if (score < best_score)
+                {
+                    best_score = score;
+                    best_move = move;
+                }
             }
         }
+
+        last_best_move = best_move;
     }
 
     std::cout
@@ -300,5 +309,5 @@ Move find_best_move(
         << nodes_searched
         << "\n";
 
-    return best_move;
+    return last_best_move;
 }
