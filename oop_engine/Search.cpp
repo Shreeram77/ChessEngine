@@ -34,6 +34,100 @@ namespace
 
         return 0;
     }
+
+    int quiescence(
+        const Position& pos,
+        int alpha,
+        int beta)
+    {
+        ++nodes_searched;
+
+        int stand_pat = evaluate(pos);
+
+        if (pos.side_to_move == Color::White)
+        {
+            if (stand_pat >= beta)
+                return beta;
+
+            if (stand_pat > alpha)
+                alpha = stand_pat;
+        }
+        else
+        {
+            if (stand_pat <= alpha)
+                return alpha;
+
+            if (stand_pat < beta)
+                beta = stand_pat;
+        }
+
+        ChessBoard board(pos);
+
+        auto moves = board.legal_moves();
+
+        moves.erase(
+            std::remove_if(
+                moves.begin(),
+                moves.end(),
+                [](const Move& move)
+                {
+                    return !move.is_capture();
+                }),
+            moves.end());
+
+        std::sort(
+            moves.begin(),
+            moves.end(),
+            [](const Move& a, const Move& b)
+            {
+                return move_score(a) > move_score(b);
+            });
+
+        if (pos.side_to_move == Color::White)
+        {
+            for (const auto& move : moves)
+            {
+                Position next =
+                    board.apply_move(move);
+
+                int score =
+                    quiescence(
+                        next,
+                        alpha,
+                        beta);
+
+                if (score > alpha)
+                    alpha = score;
+
+                if (alpha >= beta)
+                    break;
+            }
+
+            return alpha;
+        }
+        else
+        {
+            for (const auto& move : moves)
+            {
+                Position next =
+                    board.apply_move(move);
+
+                int score =
+                    quiescence(
+                        next,
+                        alpha,
+                        beta);
+
+                if (score < beta)
+                    beta = score;
+
+                if (alpha >= beta)
+                    break;
+            }
+
+            return beta;
+        }
+    }
     
     int minimax(
         const Position& pos,
@@ -61,7 +155,10 @@ namespace
         }
 
         if (depth == 0)
-            return evaluate(pos);
+        return quiescence(
+            pos,
+            alpha,
+            beta);
 
         std::sort(
             moves.begin(),
