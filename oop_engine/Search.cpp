@@ -4,6 +4,8 @@
 #include <algorithm>
 #include "ChessBoard.hpp"
 #include "Evaluator.hpp"
+#include "Zobrist.hpp"
+#include "TranspositionTable.hpp"
 
 #include <limits>
 
@@ -137,6 +139,19 @@ namespace
     {
         ++nodes_searched;
 
+        int cached_score;
+
+        uint64_t hash =
+            compute_hash(pos);
+
+        if (probe_tt(
+                hash,
+                depth,
+                cached_score))
+        {
+            return cached_score;
+        }
+
         ChessBoard board(pos);
 
         auto moves = board.legal_moves();
@@ -150,6 +165,10 @@ namespace
 
                 return MATE_SCORE + depth;
             }
+            store_tt(
+                hash,
+                depth,
+                0);
 
             return 0;
         }
@@ -191,6 +210,10 @@ namespace
                 if (alpha >= beta)
                     break;
             }
+            store_tt(
+                hash,
+                depth,
+                best);
 
             return best;
         }
@@ -217,6 +240,10 @@ namespace
                 if (alpha >= beta)
                     break;
             }
+            store_tt(
+                hash,
+                depth,
+                best);
 
             return best;
         }
@@ -228,6 +255,8 @@ Move find_best_move(
     int depth)
 {
     nodes_searched = 0;
+
+    clear_tt();
 
     ChessBoard board(pos);
 
