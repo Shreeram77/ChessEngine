@@ -154,6 +154,9 @@ namespace
             return cached_score;
         }
 
+        int original_alpha = alpha;
+        int original_beta  = beta;
+
         ChessBoard board(pos);
 
         auto moves = board.legal_moves();
@@ -224,11 +227,20 @@ namespace
                 if (alpha >= beta)
                     break;
             }
+            TTFlag flag;
+
+            if (best <= original_alpha)
+                flag = TTFlag::UpperBound;
+            else if (best >= original_beta)
+                flag = TTFlag::LowerBound;
+            else
+                flag = TTFlag::Exact;
+
             store_tt(
                 hash,
                 depth,
                 best,
-                TTFlag::Exact);
+                flag);
 
             return best;
         }
@@ -255,11 +267,20 @@ namespace
                 if (alpha >= beta)
                     break;
             }
+            TTFlag flag;
+
+            if (best <= original_alpha)
+                flag = TTFlag::UpperBound;
+            else if (best >= original_beta)
+                flag = TTFlag::LowerBound;
+            else
+                flag = TTFlag::Exact;
+
             store_tt(
                 hash,
                 depth,
                 best,
-                TTFlag::Exact);
+                flag);
 
             return best;
         }
@@ -272,7 +293,7 @@ Move find_best_move(
 {
     nodes_searched = 0;
 
-    clear_tt();
+    // clear_tt();
 
     ChessBoard board(pos);
 
