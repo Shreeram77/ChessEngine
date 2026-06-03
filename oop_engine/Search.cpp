@@ -11,6 +11,10 @@ namespace
 {
     uint64_t nodes_searched = 0;
 
+    constexpr int NEG_INF = -10000000;
+    constexpr int POS_INF =  10000000;
+    constexpr int MATE_SCORE = 100000;
+
     int move_score(const Move& move)
     {
         switch (move.flag)
@@ -48,9 +52,9 @@ namespace
             if (board.is_in_check(pos.side_to_move))
             {
                 if (pos.side_to_move == Color::White)
-                    return -100000 - depth;
+                    return -MATE_SCORE - depth;
 
-                return 100000 + depth;
+                return MATE_SCORE + depth;
             }
 
             return 0;
@@ -69,7 +73,7 @@ namespace
 
         if (pos.side_to_move == Color::White)
         {
-            int best = std::numeric_limits<int>::min();
+            int best = NEG_INF;
 
             for (const auto& move : moves)
             {
@@ -95,7 +99,7 @@ namespace
         }
         else
         {
-            int best = std::numeric_limits<int>::max();
+            int best = POS_INF;
 
             for (const auto& move : moves)
             {
@@ -148,7 +152,7 @@ Move find_best_move(
     if (pos.side_to_move == Color::White)
     {
         int best_score =
-            std::numeric_limits<int>::min();
+            NEG_INF;
 
         for (const auto& move : moves)
         {
@@ -159,8 +163,8 @@ Move find_best_move(
                 minimax(
                     next,
                     depth - 1,
-                    std::numeric_limits<int>::min(),
-                    std::numeric_limits<int>::max());
+                    NEG_INF,
+                    POS_INF);
 
             if (score > best_score)
             {
@@ -172,7 +176,7 @@ Move find_best_move(
     else
     {
         int best_score =
-            std::numeric_limits<int>::max();
+            POS_INF;
 
         for (const auto& move : moves)
         {
@@ -183,8 +187,8 @@ Move find_best_move(
                 minimax(
                     next,
                     depth - 1,
-                    std::numeric_limits<int>::min(),
-                    std::numeric_limits<int>::max());
+                    NEG_INF,
+                    POS_INF);
 
             if (score < best_score)
             {
