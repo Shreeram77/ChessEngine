@@ -9,7 +9,7 @@ int main()
         "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
     );
 
-    Move best = find_best_move(pos, 3);
+    Move best = find_best_move(pos, 4);
 
     std::cout
         << "Best move: "
