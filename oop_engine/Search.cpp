@@ -19,7 +19,12 @@ namespace
     constexpr int MATE_SCORE = 100000;
     static constexpr int MAX_PLY = 64;
 
+
+    // killer_moves[ply][0] = best killer
+    // killer_moves[ply][1] = second best killer
     static Move killer_moves[MAX_PLY][2];
+
+    static int history_table[64][64];
 
     int negamax(
         const Position& pos,
@@ -53,7 +58,11 @@ namespace
         if (move == killer_moves[ply][1])
             return 80;
 
-        return 0;
+        return history_table[
+            move.from
+        ][
+            move.to
+        ];
     }
 
     int quiescence(
@@ -241,6 +250,12 @@ namespace
 
                     killer_moves[ply][0] =
                         move;
+
+                    history_table[
+                        move.from
+                    ][
+                        move.to
+                    ] += depth * depth;
                 }
 
                 break;
