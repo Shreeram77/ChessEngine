@@ -1,5 +1,5 @@
 #include "Search.hpp"
-
+#include <iostream>
 #include "ChessBoard.hpp"
 #include "Evaluator.hpp"
 
@@ -7,8 +7,14 @@
 
 namespace
 {
-    int minimax(const Position& pos, int depth)
+    uint64_t nodes_searched = 0;
+
+    int minimax(
+    const Position& pos,
+    int depth)
     {
+        ++nodes_searched;
+
         if (depth == 0)
             return evaluate(pos);
 
@@ -72,6 +78,8 @@ Move find_best_move(
     const Position& pos,
     int depth)
 {
+    nodes_searched = 0;
+
     ChessBoard board(pos);
 
     auto moves = board.legal_moves();
@@ -121,6 +129,11 @@ Move find_best_move(
             }
         }
     }
+
+    std::cout
+    << "Nodes searched: "
+    << nodes_searched
+    << "\n";
 
     return best_move;
 }

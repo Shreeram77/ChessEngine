@@ -1,13 +1,18 @@
 #include <iostream>
 
 #include "Position.hpp"
-#include "Evaluator.hpp"
+#include "Search.hpp"
 
 int main()
 {
- Position pos = Position::from_fen(
-    "rnb1kbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-);
+    Position pos = Position::from_fen(
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+    );
 
-    std::cout << evaluate(pos) << "\n";
+    Move best = find_best_move(pos, 3);
+
+    std::cout
+        << "Best move: "
+        << best.to_uci()
+        << "\n";
 }
