@@ -81,12 +81,19 @@ void run_uci()
             }
         }
         else if (command.rfind(
-            "go depth ",
+            "go",
             0) == 0)
         {
-            int depth =
-                std::stoi(
-                    command.substr(9));
+            int depth = 5;
+
+            if (command.rfind(
+                "go depth ",
+                0) == 0)
+            {
+                depth =
+                    std::stoi(
+                        command.substr(9));
+            }
 
             Move best =
                 find_best_move(
