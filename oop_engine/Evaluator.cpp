@@ -1,6 +1,8 @@
 #include "Evaluator.hpp"
 #include "Piece.hpp"
 
+
+
 static int piece_value(PieceType type)
 {
     switch (type)
@@ -15,6 +17,39 @@ static int piece_value(PieceType type)
     }
 }
 
+static const int KNIGHT_PST[8][8] =
+{
+    {-50,-40,-30,-30,-30,-30,-40,-50},
+    {-40,-20,  0,  0,  0,  0,-20,-40},
+    {-30,  0, 10, 15, 15, 10,  0,-30},
+    {-30,  5, 15, 20, 20, 15,  5,-30},
+    {-30,  0, 15, 20, 20, 15,  0,-30},
+    {-30,  5, 10, 15, 15, 10,  5,-30},
+    {-40,-20,  0,  5,  5,  0,-20,-40},
+    {-50,-40,-30,-30,-30,-30,-40,-50}
+};
+
+
+static int pst_bonus(
+    const Piece& piece,
+    int rank,
+    int file)
+{
+    if (piece.type != PieceType::Knight)
+        return 0;
+
+    int table_rank;
+
+    if (piece.color == Color::White)
+        table_rank = 7 - rank;
+    else
+        table_rank = rank;
+
+    return KNIGHT_PST[table_rank][file];
+}
+
+
+
 int evaluate(const Position& pos)
 {
     int score = 0;
@@ -28,7 +63,12 @@ int evaluate(const Position& pos)
             if (piece.type == PieceType::None)
                 continue;
 
-            int value = piece_value(piece.type);
+            int value = 
+                    piece_value(piece.type)
+                    + pst_bonus(
+                        piece,
+                        rank,
+                        file);
 
             if (piece.color == Color::White)
                 score += value;
