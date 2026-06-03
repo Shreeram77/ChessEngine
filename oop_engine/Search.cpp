@@ -1,5 +1,6 @@
 #include "Search.hpp"
 #include <iostream>
+
 #include "ChessBoard.hpp"
 #include "Evaluator.hpp"
 
@@ -10,8 +11,10 @@ namespace
     uint64_t nodes_searched = 0;
 
     int minimax(
-    const Position& pos,
-    int depth)
+        const Position& pos,
+        int depth,
+        int alpha,
+        int beta)
     {
         ++nodes_searched;
 
@@ -35,38 +38,52 @@ namespace
 
         if (pos.side_to_move == Color::White)
         {
-            int best =
-                std::numeric_limits<int>::min();
+            int best = std::numeric_limits<int>::min();
 
             for (const auto& move : moves)
             {
-                Position next =
-                    board.apply_move(move);
+                Position next = board.apply_move(move);
 
                 int score =
-                    minimax(next, depth - 1);
+                    minimax(next,
+                            depth - 1,
+                            alpha,
+                            beta);
 
                 if (score > best)
                     best = score;
+
+                if (best > alpha)
+                    alpha = best;
+
+                if (alpha >= beta)
+                    break;
             }
 
             return best;
         }
         else
         {
-            int best =
-                std::numeric_limits<int>::max();
+            int best = std::numeric_limits<int>::max();
 
             for (const auto& move : moves)
             {
-                Position next =
-                    board.apply_move(move);
+                Position next = board.apply_move(move);
 
                 int score =
-                    minimax(next, depth - 1);
+                    minimax(next,
+                            depth - 1,
+                            alpha,
+                            beta);
 
                 if (score < best)
                     best = score;
+
+                if (best < beta)
+                    beta = best;
+
+                if (alpha >= beta)
+                    break;
             }
 
             return best;
@@ -100,7 +117,11 @@ Move find_best_move(
                 board.apply_move(move);
 
             int score =
-                minimax(next, depth - 1);
+                minimax(
+                    next,
+                    depth - 1,
+                    std::numeric_limits<int>::min(),
+                    std::numeric_limits<int>::max());
 
             if (score > best_score)
             {
@@ -120,7 +141,11 @@ Move find_best_move(
                 board.apply_move(move);
 
             int score =
-                minimax(next, depth - 1);
+                minimax(
+                    next,
+                    depth - 1,
+                    std::numeric_limits<int>::min(),
+                    std::numeric_limits<int>::max());
 
             if (score < best_score)
             {
@@ -131,9 +156,9 @@ Move find_best_move(
     }
 
     std::cout
-    << "Nodes searched: "
-    << nodes_searched
-    << "\n";
+        << "Nodes searched: "
+        << nodes_searched
+        << "\n";
 
     return best_move;
 }
