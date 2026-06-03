@@ -503,7 +503,7 @@ Position ChessBoard::apply_move_to(const Position& base, const Move& m) const
     {
         // The en passant target is the square the pawn skipped over
         int ep_rank = (us == Color::White) ? 2 : 5;
-        next.en_passant_sq = sq::from_rf(ep_rank, sq::file_of(m.from));
+        next.en_passant_sq = sq::from_rf(ep_rank, sq::file_of(m.to));
     }
     else
     {
