@@ -30,7 +30,7 @@ namespace
 
         return 0;
     }
-
+    
     int minimax(
         const Position& pos,
         int depth,
@@ -39,23 +39,25 @@ namespace
     {
         ++nodes_searched;
 
-        if (depth == 0)
-            return evaluate(pos);
-
         ChessBoard board(pos);
 
-        if (board.is_checkmate())
-        {
-            if (pos.side_to_move == Color::White)
-                return -100000;
+        auto moves = board.legal_moves();
 
-            return 100000;
+        if (moves.empty())
+        {
+            if (board.is_in_check(pos.side_to_move))
+            {
+                if (pos.side_to_move == Color::White)
+                    return -100000 - depth;
+
+                return 100000 + depth;
+            }
+
+            return 0;
         }
 
-        if (board.is_stalemate())
-            return 0;
-
-        auto moves = board.legal_moves();
+        if (depth == 0)
+            return evaluate(pos);
 
         std::sort(
             moves.begin(),
@@ -129,7 +131,7 @@ Move find_best_move(
     ChessBoard board(pos);
 
     auto moves = board.legal_moves();
-    
+
     std::sort(
         moves.begin(),
         moves.end(),
