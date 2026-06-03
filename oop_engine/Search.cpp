@@ -9,6 +9,7 @@
 
 #include <limits>
 
+
 namespace
 {
     uint64_t nodes_searched = 0;
@@ -16,6 +17,12 @@ namespace
     constexpr int NEG_INF = -10000000;
     constexpr int POS_INF =  10000000;
     constexpr int MATE_SCORE = 100000;
+
+    int negamax(
+        const Position& pos,
+        int depth,
+        int alpha,
+        int beta);
 
     int move_score(const Move& move)
     {
@@ -36,6 +43,67 @@ namespace
 
         return 0;
     }
+
+    // int quiescence(
+    //     const Position& pos,
+    //     int alpha,
+    //     int beta)
+    // {
+    //     ++nodes_searched;
+
+    //     int stand_pat = evaluate(pos);
+
+    //     if (pos.side_to_move == Color::Black)
+    //         stand_pat = -stand_pat;
+
+    //     if (stand_pat >= beta)
+    //         return beta;
+
+    //     if (stand_pat > alpha)
+    //         alpha = stand_pat;
+
+    //     ChessBoard board(pos);
+
+    //     auto moves = board.legal_moves();
+
+    //     moves.erase(
+    //         std::remove_if(
+    //             moves.begin(),
+    //             moves.end(),
+    //             [](const Move& move)
+    //             {
+    //                 return !move.is_capture();
+    //             }),
+    //         moves.end());
+
+    //     std::sort(
+    //         moves.begin(),
+    //         moves.end(),
+    //         [](const Move& a, const Move& b)
+    //         {
+    //             return move_score(a) > move_score(b);
+    //         });
+
+    //     for (const auto& move : moves)
+    //     {
+    //         Position next =
+    //             board.apply_move(move);
+
+    //         int score =
+    //             -quiescence(
+    //                 next,
+    //                 -beta,
+    //                 -alpha);
+
+    //         if (score > alpha)
+    //             alpha = score;
+
+    //         if (alpha >= beta)
+    //             break;
+    //     }
+
+    //     return alpha;
+    // }
 
     int quiescence(
         const Position& pos,
@@ -130,7 +198,107 @@ namespace
             return beta;
         }
     }
-    
+
+    int negamax(
+        const Position& pos,
+        int depth,
+        int alpha,
+        int beta)
+    {
+        ++nodes_searched;
+
+        int cached_score;
+
+        uint64_t hash =
+            compute_hash(pos);
+
+        if (probe_tt(
+                hash,
+                depth,
+                alpha,
+                beta,
+                cached_score))
+        {
+            return cached_score;
+        }
+
+        int original_alpha = alpha;
+        int original_beta  = beta;
+
+        ChessBoard board(pos);
+
+        auto moves = board.legal_moves();
+
+        if (moves.empty())
+        {
+            if (board.is_in_check(pos.side_to_move))
+            {
+                return -MATE_SCORE - depth;
+            }
+
+            return 0;
+        }
+
+        if (depth == 0)
+        {
+            int score = evaluate(pos);
+
+            if (pos.side_to_move == Color::Black)
+                score = -score;
+
+            return score;
+        }
+
+        std::sort(
+            moves.begin(),
+            moves.end(),
+            [](const Move& a, const Move& b)
+            {
+                return move_score(a) > move_score(b);
+            });
+
+        int best = NEG_INF;
+
+        for (const auto& move : moves)
+        {
+            Position next =
+                board.apply_move(move);
+
+            int score =
+                -negamax(
+                    next,
+                    depth - 1,
+                    -beta,
+                    -alpha);
+
+            if (score > best)
+                best = score;
+
+            if (score > alpha)
+                alpha = score;
+
+            if (alpha >= beta)
+                break;
+        }
+
+        TTFlag flag;
+
+        if (best <= original_alpha)
+            flag = TTFlag::UpperBound;
+        else if (best >= original_beta)
+            flag = TTFlag::LowerBound;
+        else
+            flag = TTFlag::Exact;
+
+        store_tt(
+            hash,
+            depth,
+            best,
+            flag);
+
+        return best;
+    }
+
     int minimax(
         const Position& pos,
         int depth,
@@ -334,53 +502,26 @@ Move find_best_move(
     {
         best_move = moves.front();
 
-        if (pos.side_to_move == Color::White)
+        int best_score = NEG_INF;
+
+        for (const auto& move : moves)
         {
-            int best_score = NEG_INF;
+            Position next =
+                board.apply_move(move);
 
-            for (const auto& move : moves)
+            int score =
+                -negamax(
+                    next,
+                    current_depth - 1,
+                    NEG_INF,
+                    POS_INF);
+
+            if (score > best_score)
             {
-                Position next =
-                    board.apply_move(move);
-
-                int score =
-                    minimax(
-                        next,
-                        current_depth - 1,
-                        NEG_INF,
-                        POS_INF);
-
-                if (score > best_score)
-                {
-                    best_score = score;
-                    best_move = move;
-                }
+                best_score = score;
+                best_move = move;
             }
         }
-        else
-        {
-            int best_score = POS_INF;
-
-            for (const auto& move : moves)
-            {
-                Position next =
-                    board.apply_move(move);
-
-                int score =
-                    minimax(
-                        next,
-                        current_depth - 1,
-                        NEG_INF,
-                        POS_INF);
-
-                if (score < best_score)
-                {
-                    best_score = score;
-                    best_move = move;
-                }
-            }
-        }
-
         last_best_move = best_move;
     }
 
@@ -391,3 +532,4 @@ Move find_best_move(
 
     return last_best_move;
 }
+
