@@ -29,16 +29,41 @@ static const int KNIGHT_PST[8][8] =
     {-50,-40,-30,-30,-30,-30,-40,-50}
 };
 
+static const int PAWN_PST[8][8] =
+{
+    { 0,  0,  0,  0,  0,  0,  0,  0},
+    {50, 50, 50, 50, 50, 50, 50, 50},
+    {10, 10, 20, 30, 30, 20, 10, 10},
+    { 5,  5, 10, 25, 25, 10,  5,  5},
+    { 0,  0,  0, 20, 20,  0,  0,  0},
+    { 5, -5,-10,  0,  0,-10, -5,  5},
+    { 5, 10, 10,-20,-20, 10, 10,  5},
+    { 0,  0,  0,  0,  0,  0,  0,  0}
+};
 
 static int pst_bonus(
     const Piece& piece,
     int rank,
     int file)
 {
-    if (piece.type != PieceType::Knight)
-        return 0;
-
     int table_rank;
+
+    if (piece.color == Color::White)
+        table_rank = 7 - rank;
+    else
+        table_rank = rank;
+
+    switch (piece.type)
+    {
+        case PieceType::Pawn:
+            return PAWN_PST[table_rank][file];
+
+        case PieceType::Knight:
+            return KNIGHT_PST[table_rank][file];
+
+        default:
+            return 0;
+    }
 
     if (piece.color == Color::White)
         table_rank = 7 - rank;
