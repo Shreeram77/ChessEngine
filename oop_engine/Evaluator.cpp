@@ -53,6 +53,18 @@ static const int BISHOP_PST[8][8] =
     {-20,-10,-10,-10,-10,-10,-10,-20}
 };
 
+static const int KING_PST[8][8] =
+{
+    {-30,-40,-40,-50,-50,-40,-40,-30},
+    {-30,-40,-40,-50,-50,-40,-40,-30},
+    {-30,-40,-40,-50,-50,-40,-40,-30},
+    {-30,-40,-40,-50,-50,-40,-40,-30},
+    {-20,-30,-30,-40,-40,-30,-30,-20},
+    {-10,-20,-20,-20,-20,-20,-20,-10},
+    { 20, 20,  0,  0,  0,  0, 20, 20},
+    { 20, 30, 10,  0,  0, 10, 30, 20}
+};
+
 static int pst_bonus(
     const Piece& piece,
     int rank,
@@ -75,6 +87,9 @@ static int pst_bonus(
 
         case PieceType::Bishop:
             return BISHOP_PST[table_rank][file];
+
+        case PieceType::King:
+            return KING_PST[table_rank][file];
 
         default:
             return 0;
