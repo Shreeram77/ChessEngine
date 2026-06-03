@@ -2,7 +2,28 @@
 #include "Position.hpp"
 #include <iostream>
 #include <string>
+#include "ChessBoard.hpp"
+#include "Search.hpp"
+#include <sstream>
+#include <vector>
 
+Move find_uci_move(
+    const Position& pos,
+    const std::string& move_text)
+{
+    ChessBoard board(pos);
+
+    auto moves =
+        board.legal_moves();
+
+    for (const auto& move : moves)
+    {
+        if (move.to_uci() == move_text)
+            return move;
+    }
+
+    return Move{};
+}
 
 void run_uci()
 {
@@ -25,10 +46,58 @@ void run_uci()
             std::cout
                 << "readyok\n";
         }
-        else if (command == "position startpos")
+        else if (command.rfind(
+            "position startpos",
+            0) == 0)
         {
             current_position =
                 Position::starting();
+
+            size_t moves_pos =
+                command.find(" moves ");
+
+            if (moves_pos != std::string::npos)
+            {
+                std::stringstream ss(
+                    command.substr(
+                        moves_pos + 7));
+
+                std::string move_text;
+
+                while (ss >> move_text)
+                {
+                    Move move =
+                        find_uci_move(
+                            current_position,
+                            move_text);
+
+                    ChessBoard board(
+                        current_position);
+
+                    current_position =
+                        board.apply_move(
+                            move);
+                }
+            }
+        }
+        else if (command.rfind(
+            "go depth ",
+            0) == 0)
+        {
+            int depth =
+                std::stoi(
+                    command.substr(9));
+
+            Move best =
+                find_best_move(
+                    current_position,
+                    depth);
+
+            std::cout
+                << "bestmove "
+                << best.to_uci()
+                << "\n"
+                << std::flush;
         }
         else if (command.rfind(
             "position fen ",
