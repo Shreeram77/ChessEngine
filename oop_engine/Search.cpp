@@ -17,14 +17,20 @@ namespace
     constexpr int NEG_INF = -10000000;
     constexpr int POS_INF =  10000000;
     constexpr int MATE_SCORE = 100000;
+    static constexpr int MAX_PLY = 64;
+
+    static Move killer_moves[MAX_PLY][2];
 
     int negamax(
         const Position& pos,
         int depth,
         int alpha,
-        int beta);
+        int beta,
+        int ply);
 
-    int move_score(const Move& move)
+    int move_score(
+        const Move& move,
+        int ply)
     {
         switch (move.flag)
         {
@@ -41,69 +47,14 @@ namespace
         if (!move.captured.is_empty())
             return 100;
 
+        if (move == killer_moves[ply][0])
+            return 90;
+
+        if (move == killer_moves[ply][1])
+            return 80;
+
         return 0;
     }
-
-    // int quiescence(
-    //     const Position& pos,
-    //     int alpha,
-    //     int beta)
-    // {
-    //     ++nodes_searched;
-
-    //     int stand_pat = evaluate(pos);
-
-    //     if (pos.side_to_move == Color::Black)
-    //         stand_pat = -stand_pat;
-
-    //     if (stand_pat >= beta)
-    //         return beta;
-
-    //     if (stand_pat > alpha)
-    //         alpha = stand_pat;
-
-    //     ChessBoard board(pos);
-
-    //     auto moves = board.legal_moves();
-
-    //     moves.erase(
-    //         std::remove_if(
-    //             moves.begin(),
-    //             moves.end(),
-    //             [](const Move& move)
-    //             {
-    //                 return !move.is_capture();
-    //             }),
-    //         moves.end());
-
-    //     std::sort(
-    //         moves.begin(),
-    //         moves.end(),
-    //         [](const Move& a, const Move& b)
-    //         {
-    //             return move_score(a) > move_score(b);
-    //         });
-
-    //     for (const auto& move : moves)
-    //     {
-    //         Position next =
-    //             board.apply_move(move);
-
-    //         int score =
-    //             -quiescence(
-    //                 next,
-    //                 -beta,
-    //                 -alpha);
-
-    //         if (score > alpha)
-    //             alpha = score;
-
-    //         if (alpha >= beta)
-    //             break;
-    //     }
-
-    //     return alpha;
-    // }
 
     int quiescence(
         const Position& pos,
@@ -150,7 +101,8 @@ namespace
             moves.end(),
             [](const Move& a, const Move& b)
             {
-                return move_score(a) > move_score(b);
+                return move_score(a, 0) 
+                        > move_score(b, 0);
             });
 
         if (pos.side_to_move == Color::White)
@@ -203,7 +155,8 @@ namespace
         const Position& pos,
         int depth,
         int alpha,
-        int beta)
+        int beta,
+        int ply)
     {
         ++nodes_searched;
 
@@ -252,9 +205,10 @@ namespace
         std::sort(
             moves.begin(),
             moves.end(),
-            [](const Move& a, const Move& b)
+            [ply](const Move& a, const Move& b)
             {
-                return move_score(a) > move_score(b);
+                return move_score(a, ply)
+                        > move_score(b, ply);
             });
 
         int best = NEG_INF;
@@ -269,7 +223,8 @@ namespace
                     next,
                     depth - 1,
                     -beta,
-                    -alpha);
+                    -alpha,
+                    ply + 1);
 
             if (score > best)
                 best = score;
@@ -278,7 +233,18 @@ namespace
                 alpha = score;
 
             if (alpha >= beta)
+            {
+                if (!move.is_capture())
+                {
+                    killer_moves[ply][1] =
+                        killer_moves[ply][0];
+
+                    killer_moves[ply][0] =
+                        move;
+                }
+
                 break;
+            }
         }
 
         TTFlag flag;
@@ -317,7 +283,8 @@ Move find_best_move(
         moves.end(),
         [](const Move& a, const Move& b)
         {
-            return move_score(a) > move_score(b);
+            return move_score(a, 0)
+                > move_score(b, 0);
         });
 
     if (moves.empty())
@@ -359,7 +326,8 @@ Move find_best_move(
                     next,
                     current_depth - 1,
                     NEG_INF,
-                    POS_INF);
+                    POS_INF,
+                    1);
 
             if (score > best_score)
             {
