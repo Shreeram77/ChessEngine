@@ -1,6 +1,7 @@
 #include "Search.hpp"
 #include <iostream>
-
+#include <limits>
+#include <algorithm>
 #include "ChessBoard.hpp"
 #include "Evaluator.hpp"
 
@@ -9,6 +10,26 @@
 namespace
 {
     uint64_t nodes_searched = 0;
+
+    int move_score(const Move& move)
+    {
+        switch (move.flag)
+        {
+            case MoveFlag::PromoteQueen:
+            case MoveFlag::PromoteRook:
+            case MoveFlag::PromoteBishop:
+            case MoveFlag::PromoteKnight:
+                return 1000;
+
+            default:
+                break;
+        }
+
+        if (!move.captured.is_empty())
+            return 100;
+
+        return 0;
+    }
 
     int minimax(
         const Position& pos,
@@ -35,6 +56,14 @@ namespace
             return 0;
 
         auto moves = board.legal_moves();
+
+        std::sort(
+            moves.begin(),
+            moves.end(),
+            [](const Move& a, const Move& b)
+            {
+                return move_score(a) > move_score(b);
+            });
 
         if (pos.side_to_move == Color::White)
         {
@@ -100,6 +129,14 @@ Move find_best_move(
     ChessBoard board(pos);
 
     auto moves = board.legal_moves();
+    
+    std::sort(
+        moves.begin(),
+        moves.end(),
+        [](const Move& a, const Move& b)
+        {
+            return move_score(a) > move_score(b);
+        });
 
     if (moves.empty())
         return Move{};
