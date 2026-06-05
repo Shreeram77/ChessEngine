@@ -56,7 +56,7 @@ function App() {
     setThinking(true);
 
     const response = await fetch(
-      "http://localhost:3000/move",
+      "https://chessengine-backend.onrender.com/move",
       {
         method: "POST",
         headers: {
