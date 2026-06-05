@@ -7,6 +7,7 @@
 #include <string>
 #include <cstdint>
 #include <cassert>
+#include <stdexcept>
 
 // ============================================================
 //  Position.hpp
