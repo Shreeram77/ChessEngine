@@ -1,5 +1,6 @@
 #include "Search.hpp"
 #include <iostream>
+#include <chrono>
 #include <limits>
 #include <algorithm>
 #include "ChessBoard.hpp"
@@ -281,13 +282,14 @@ namespace
     }
 }
 
-Move find_best_move(
+SearchResult find_best_move(
     const Position& pos,
     int depth)
 {
     nodes_searched = 0;
 
-    // clear_tt();
+    auto start =
+        std::chrono::steady_clock::now();
 
     ChessBoard board(pos);
 
@@ -302,12 +304,16 @@ Move find_best_move(
                 > move_score(b, 0);
         });
 
+    SearchResult result;
+
     if (moves.empty())
-        return Move{};
+        return result;
 
     Move best_move = moves.front();
 
     Move last_best_move = best_move;
+
+    int last_best_score = 0;
 
     auto it =
         std::find(
@@ -350,14 +356,42 @@ Move find_best_move(
                 best_move = move;
             }
         }
+
         last_best_move = best_move;
+        last_best_score = best_score;
+
+        auto now =
+            std::chrono::steady_clock::now();
+
+        long long elapsed =
+            std::chrono::duration_cast<
+                std::chrono::milliseconds>(
+                now - start).count();
+
+        std::cout
+            << "info depth "
+            << current_depth
+            << " score cp "
+            << best_score
+            << " nodes "
+            << nodes_searched
+            << " time "
+            << elapsed
+            << "\n"
+            << std::flush;
     }
 
-    std::cout
-        << "Nodes searched: "
-        << nodes_searched
-        << "\n";
+    auto end =
+        std::chrono::steady_clock::now();
 
-    return last_best_move;
+    result.best_move = last_best_move;
+    result.score = last_best_score;
+    result.depth = depth;
+    result.nodes = nodes_searched;
+    result.time_ms =
+        std::chrono::duration_cast<
+            std::chrono::milliseconds>(
+            end - start).count();
+
+    return result;
 }
-

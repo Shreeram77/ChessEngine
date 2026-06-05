@@ -12,6 +12,8 @@ function App() {
   const [boardOrientation, setBoardOrientation] =
   useState("white");
   const [playerColor, setPlayerColor] = useState("white");
+  const [engineData, setEngineData] = useState(null);
+  const [arrows, setArrows] = useState([]);
 
   function newGame() {
     setGame(new Chess());
@@ -56,6 +58,7 @@ function App() {
     setThinking(true);
 
     const response = await fetch(
+      // "http://localhost:3000/move",
       "https://chessengine-backend.onrender.com/move",
       {
         method: "POST",
@@ -70,6 +73,18 @@ function App() {
     );
 
     const data = await response.json();
+
+    setEngineData(data);
+
+    setArrows([
+      [
+        data.bestMove.slice(0, 2),
+        data.bestMove.slice(2, 4),
+        "green",
+      ],
+    ]);
+
+    console.log("ENGINE DATA:", data);
 
     setThinking(false);
 
@@ -128,20 +143,57 @@ function App() {
   }
 
   return (
-    <div style={{ width: "700px", margin: "40px auto" }}>
-      <h1>Shreeram Chess Platform</h1>
+    <div
+      style={{
+        minHeight: "100vh",
+        background: "#121212",
+        color: "white",
+        padding: "20px",
+      }}
+    >
+    <div style={{ marginBottom: "25px" }}>
+  <h1
+    style={{
+      fontSize: "42px",
+      margin: 0,
+    }}
+  >
+    ♟️ Shreeram Engine
+  </h1>
+
+  <p
+    style={{
+      color: "#999",
+      marginTop: "8px",
+    }}
+  >
+    Custom C++ Chess Engine • Alpha-Beta • TT • Zobrist • UCI
+  </p>
+</div>
+    <div
+      style={{
+        marginBottom: "20px",
+        display: "flex",
+        gap: "10px",
+        alignItems: "center",
+        flexWrap: "wrap",
+      }}
+    >
       <button
         onClick={newGame}
         style={{
-          marginLeft: "10px",
           padding: "8px 15px",
           cursor: "pointer",
+          background: "#2a2a2a",
+          color: "white",
+          border: "1px solid #444",
+          borderRadius: "8px",
         }}
-        >
-          New Game
-        </button>
+      >
+        New Game
+      </button>
 
-        <button
+      <button
           onClick={() =>
             setBoardOrientation(
               boardOrientation === "white"
@@ -150,64 +202,227 @@ function App() {
             )
           }
           style={{
-            marginLeft: "10px",
             padding: "8px 15px",
             cursor: "pointer",
+            background: "#2a2a2a",
+            color: "white",
+            border: "1px solid #444",
+            borderRadius: "8px",
           }}
         >
-          Flip Board
-        </button>
+        Flip Board
+      </button>
+
       <button
         onClick={undoMove}
         style={{
-          marginBottom: "15px",
           padding: "8px 15px",
           cursor: "pointer",
+          background: "#2a2a2a",
+          color: "white",
+          border: "1px solid #444",
+          borderRadius: "8px",
         }}
       >
         Undo Move
       </button>
 
-        <div style={{ marginBottom: "15px" }}>
-          <label>Difficulty: </label>
+      <div>
+        <label>Difficulty: </label>
 
-          <select
-            value={depth}
-            onChange={(e) => setDepth(Number(e.target.value))}
-          >
-            <option value={2}>Easy</option>
-            <option value={4}>Medium</option>
-            <option value={6}>Hard</option>
-          </select>
-        </div>
-
-      {thinking && (
-        <h2>Engine Thinking...</h2>
-      )}
-
-      <Chessboard
-        position={game.fen()}
-        onPieceDrop={onPieceDrop}
-        boardOrientation={boardOrientation}
-        arePiecesDraggable={!thinking}
-      />
-      {status && (
-        <h2 style={{ color: "red" }}>
-          {status}
-        </h2>
-      )}
-
-      <div style={{ marginTop: "20px" }}>
-        <h3>Move History</h3>
-
-        {history.map((move, index) => (
-          <div key={index}>
-            {index + 1}. {move}
-          </div>
-        ))}
+        <select
+          value={depth}
+          onChange={(e) =>
+            setDepth(Number(e.target.value))
+          }
+        >
+          <option value={2}>Easy</option>
+          <option value={4}>Medium</option>
+          <option value={6}>Hard</option>
+        </select>
       </div>
     </div>
-  );
-}
 
+    {thinking && (
+      <h2 style={{ color: "orange" }}>
+        Engine Thinking...
+      </h2>
+    )}
+
+    <div
+      style={{
+        background: "#2a2a2a",
+        color: "white",
+        border: "1px solid #444",
+        borderRadius: "6px",
+        padding: "5px",
+      }}
+    >
+      {/* BOARD */}
+    
+      {/* BOARD */}
+      <div
+        style={{
+          display: "flex",
+          gap: "12px",
+        }}
+      >
+        {/* Evaluation Bar */}
+        <div
+          style={{
+            width: "35px",
+            height: "600px",
+            background: "#222",
+            borderRadius: "8px",
+            overflow: "hidden",
+            border: "1px solid #444",
+            position: "relative",
+          }}
+        >
+          <div
+            style={{
+              position: "absolute",
+              bottom: 0,
+              width: "100%",
+              background: "white",
+              height: `${
+                engineData
+                  ? Math.max(
+                      0,
+                      Math.min(
+                        100,
+                        50 +
+                          engineData.evaluation * 10
+                      )
+                    )
+                  : 50
+              }%`,
+            }}
+          />
+        </div>
+
+        <div>
+          <Chessboard
+            boardWidth={600}
+            position={game.fen()}
+            onPieceDrop={onPieceDrop}
+            boardOrientation={boardOrientation}
+            arePiecesDraggable={!thinking}
+            customArrows={arrows}
+          />
+
+          {status && (
+            <h2 style={{ color: "#ff4d4d" }}>
+              {status}
+            </h2>
+          )}
+        </div>
+      </div>
+
+      {/* ANALYSIS PANEL */}
+      <div
+        style={{
+          minWidth: "320px",
+          background: "#1e1e1e",
+          border: "1px solid #444",
+          borderRadius: "10px",
+          padding: "15px",
+        }}
+      >
+        <h2>Engine Analysis</h2>
+
+        <h2 style={{ marginTop: 0 }}>
+          Engine Analysis
+        </h2>
+
+        {engineData ? (
+          <>
+            <div
+              style={{
+                background: "#111",
+                padding: "15px",
+                borderRadius: "8px",
+                marginBottom: "15px",
+              }}
+            >
+              <div
+                style={{
+                  color: "#4ade80",
+                  fontSize: "28px",
+                  fontWeight: "bold",
+                }}
+              >
+                {engineData.bestMove.slice(0, 2)}
+                →
+                {engineData.bestMove.slice(2, 4)}
+              </div>
+
+              <div
+                style={{
+                  color: "#999",
+                  marginTop: "5px",
+                }}
+              >
+                Suggested Move
+              </div>
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns:
+                  "1fr 1fr",
+                gap: "10px",
+              }}
+            >
+              <div>
+                <strong>Eval</strong>
+                <br />
+                {engineData.evaluation}
+              </div>
+
+              <div>
+                <strong>Depth</strong>
+                <br />
+                {engineData.depth}
+              </div>
+
+              <div>
+                <strong>Nodes</strong>
+                <br />
+                {engineData.nodes.toLocaleString()}
+              </div>
+
+              <div>
+                <strong>Time</strong>
+                <br />
+                {engineData.time} ms
+              </div>
+            </div>
+          </>
+        ) : (
+          <p>No analysis yet.</p>
+        )}
+
+        <hr />
+
+        <h2>Move History</h2>
+
+        <div
+          style={{
+            maxHeight: "300px",
+            overflowY: "auto",
+          }}
+        >
+          {history.map((move, index) => (
+            <div key={index}>
+              {index + 1}. {move}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  </div>
+);
+}
 export default App;

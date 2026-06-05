@@ -95,14 +95,14 @@ void run_uci()
                         command.substr(9));
             }
 
-            Move best =
+            SearchResult result =
                 find_best_move(
                     current_position,
                     depth);
 
             std::cout
                 << "bestmove "
-                << best.to_uci()
+                << result.best_move.to_uci()
                 << "\n"
                 << std::flush;
         }
