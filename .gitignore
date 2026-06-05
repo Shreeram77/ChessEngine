@@ -1,3 +1,11 @@
 chess
 chess_oop
 oop_engine/chess_oop
+
+frontend/node_modules/
+backend/node_modules/
+
+frontend/dist/
+backend/dist/
+
+.env
