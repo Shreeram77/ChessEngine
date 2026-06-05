@@ -6,6 +6,20 @@ function App() {
   const [game, setGame] = useState(new Chess());
   const [history, setHistory] = useState([]);
   const [positions, setPositions] = useState([new Chess().fen()]);
+  const [depth, setDepth] = useState(4);
+  const [status, setStatus] = useState("");
+  const [thinking, setThinking] = useState(false);
+  const [boardOrientation, setBoardOrientation] =
+  useState("white");
+  const [playerColor, setPlayerColor] = useState("white");
+
+  function newGame() {
+    setGame(new Chess());
+    setHistory([]);
+    setPositions([new Chess().fen()]);
+    setStatus("");
+    setBoardOrientation("white");
+  }
 
   async function onPieceDrop(source, target) {
     const gameCopy = new Chess(game.fen());
@@ -26,6 +40,21 @@ function App() {
     // Human move immediately board par dikhao
     setGame(new Chess(gameCopy.fen()));
 
+    if (gameCopy.isCheckmate()) {
+      setStatus("Checkmate!");
+    }
+    else if (gameCopy.isStalemate()) {
+      setStatus("Stalemate!");
+    }
+    else if (gameCopy.isDraw()) {
+      setStatus("Draw!");
+    }
+    else {
+      setStatus("");
+    }
+
+    setThinking(true);
+
     const response = await fetch(
       "http://localhost:3000/move",
       {
@@ -35,12 +64,14 @@ function App() {
         },
         body: JSON.stringify({
           fen: gameCopy.fen(),
-          depth: 5,
+          depth: depth,
         }),
       }
     );
 
     const data = await response.json();
+
+    setThinking(false);
 
     // Engine move
     const engineMove = gameCopy.move({
@@ -54,6 +85,19 @@ function App() {
     }
 
     setGame(new Chess(gameCopy.fen()));
+
+    if (gameCopy.isCheckmate()) {
+      setStatus("Checkmate!");
+    }
+    else if (gameCopy.isStalemate()) {
+      setStatus("Stalemate!");
+    }
+    else if (gameCopy.isDraw()) {
+      setStatus("Draw!");
+    }
+    else {
+      setStatus("");
+    }
 
     setPositions((prev) => [
       ...prev,
@@ -77,7 +121,7 @@ function App() {
     setPositions(newPositions);
 
     setGame(new Chess(previousFen));
-    
+
     setHistory((prev) =>
     prev.slice(0, Math.max(0, prev.length - 2))
   );
@@ -86,7 +130,33 @@ function App() {
   return (
     <div style={{ width: "700px", margin: "40px auto" }}>
       <h1>Shreeram Chess Platform</h1>
+      <button
+        onClick={newGame}
+        style={{
+          marginLeft: "10px",
+          padding: "8px 15px",
+          cursor: "pointer",
+        }}
+        >
+          New Game
+        </button>
 
+        <button
+          onClick={() =>
+            setBoardOrientation(
+              boardOrientation === "white"
+                ? "black"
+                : "white"
+            )
+          }
+          style={{
+            marginLeft: "10px",
+            padding: "8px 15px",
+            cursor: "pointer",
+          }}
+        >
+          Flip Board
+        </button>
       <button
         onClick={undoMove}
         style={{
@@ -98,10 +168,34 @@ function App() {
         Undo Move
       </button>
 
+        <div style={{ marginBottom: "15px" }}>
+          <label>Difficulty: </label>
+
+          <select
+            value={depth}
+            onChange={(e) => setDepth(Number(e.target.value))}
+          >
+            <option value={2}>Easy</option>
+            <option value={4}>Medium</option>
+            <option value={6}>Hard</option>
+          </select>
+        </div>
+
+      {thinking && (
+        <h2>Engine Thinking...</h2>
+      )}
+
       <Chessboard
         position={game.fen()}
         onPieceDrop={onPieceDrop}
+        boardOrientation={boardOrientation}
+        arePiecesDraggable={!thinking}
       />
+      {status && (
+        <h2 style={{ color: "red" }}>
+          {status}
+        </h2>
+      )}
 
       <div style={{ marginTop: "20px" }}>
         <h3>Move History</h3>
