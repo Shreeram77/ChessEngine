@@ -1,3 +1,4 @@
+const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const { spawn } = require("child_process");
@@ -11,7 +12,7 @@ app.post("/move", (req, res) => {
     const { fen, depth } = req.body;
 
     const engine = spawn(
-        "/Users/shreeramgoliya/ChessEngine/oop_engine/chess_oop"
+        path.join(__dirname, "../oop_engine/chess_oop")
     );
 
     let output = "";
