@@ -94,6 +94,7 @@ The quality of move ordering determines how many nodes alpha-beta prunes. The en
 ### Transposition Table
 
 Zobrist hashing assigns each position a 64-bit hash updated incrementally. The transposition table stores `(hash, depth, score, flag)` where flag is one of `Exact | LowerBound | UpperBound`. On a TT hit at sufficient depth, the cached score replaces the subtree search entirely.
+
 This also makes iterative deepening efficient: positions searched at earlier depths are reused through TT hits during deeper iterations, reducing redundant work and improving move ordering.
 
 ---
@@ -113,12 +114,12 @@ The backend parses the final `info` line before `bestmove` and returns structure
 
 ```json
 {
-  "bestMove": "e2e4",
-  "evaluation": 0.43,
+  "bestMove": "b1c3",
+  "evaluation": 0.00,
   "depth": 6,
-  "nodes": 312451,
-  "time": 812,
-  "pv": "e2e4 e7e5 g1f3 a7a6 d2d4"
+  "nodes": 703446,
+  "time": 330,
+  "pv": "b1c3 b8c6 d2d4 g8f6 g1f3 d7d5"
 }
 ```
 
