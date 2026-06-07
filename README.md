@@ -9,6 +9,9 @@ A Perft-validated chess engine written from scratch in C++, featuring alpha-beta
 > Backend hosted on Render free tier. First request may take ~30 seconds.
 
 ---
+## Web Interface
+
+![Chess Engine UI](screenshots/chess-engine-ui.png)
 
 ## Correctness Validation
 
@@ -84,13 +87,14 @@ Quiescence search runs at leaf nodes, extending the search through captures unti
 The quality of move ordering determines how many nodes alpha-beta prunes. The engine applies four ordering layers:
 
 1. **Promotions** — searched first unconditionally
-2. **Captures** — ordered by victim value
+2. **Captures** — ordered by MVV-LVA (Most Valuable Victim, Least Valuable Aggressor): a pawn capturing a queen scores above a queen capturing a pawn
 3. **Killer moves** — two quiet moves per ply that caused a beta cutoff in a sibling node
 4. **History heuristic** — quiet moves scored by how often they caused cutoffs across the entire search, indexed by `[from][to]`
 
 ### Transposition Table
 
 Zobrist hashing assigns each position a 64-bit hash updated incrementally. The transposition table stores `(hash, depth, score, flag)` where flag is one of `Exact | LowerBound | UpperBound`. On a TT hit at sufficient depth, the cached score replaces the subtree search entirely.
+This also makes iterative deepening efficient: positions searched at earlier depths are reused through TT hits during deeper iterations, reducing redundant work and improving move ordering.
 
 ---
 
@@ -101,8 +105,8 @@ The C++ engine communicates with the Node.js backend over the **UCI protocol** (
 The engine emits standard `info` lines after each iterative deepening iteration:
 
 ```
-info depth 6 score cp 43 nodes 312451 time 812 pv e2e4 e7e5 g1f3 a7a6 d2d4
-bestmove e2e4
+info depth 6 score cp 0 nodes 703446 time 330 pv b1c3 b8c6 d2d4 g8f6 g1f3 d7d5
+bestmove b1c3
 ```
 
 The backend parses the final `info` line before `bestmove` and returns structured JSON:
