@@ -1,428 +1,362 @@
 import { useState } from "react";
 import { Chess } from "chess.js";
 import { Chessboard } from "react-chessboard";
+import "./App.css";
 
-function App() {
-  const [game, setGame] = useState(new Chess());
-  const [history, setHistory] = useState([]);
-  const [positions, setPositions] = useState([new Chess().fen()]);
-  const [depth, setDepth] = useState(4);
-  const [status, setStatus] = useState("");
-  const [thinking, setThinking] = useState(false);
-  const [boardOrientation, setBoardOrientation] =
-  useState("white");
-  const [playerColor, setPlayerColor] = useState("white");
-  const [engineData, setEngineData] = useState(null);
-  const [arrows, setArrows] = useState([]);
+// ── Constants ───────────────────────────────────────────────
 
-  function newGame() {
-    setGame(new Chess());
-    setHistory([]);
-    setPositions([new Chess().fen()]);
-    setStatus("");
-    setBoardOrientation("white");
-  }
+const API_URL = "https://chessengine-backend.onrender.com/move";
+// const API_URL = "http://localhost:3000/move"; // uncomment for local dev
 
-  async function onPieceDrop(source, target) {
-    const gameCopy = new Chess(game.fen());
+// Converts centipawn score to a 0–100 percentage for the eval bar.
+// White advantage → above 50, Black → below 50.
+// Clamped to [0, 100]. Each 100cp ≈ 5 bar units (20cp per unit).
+function evalToBarPercent(pawns) {
+    const percent = 50 - (pawns ?? 0) * 5;
 
-    const move = gameCopy.move({
-      from: source,
-      to: target,
-      promotion: "q",
-    });
-
-    if (move === null) {
-      return false;
-    }
-
-    // Human move save
-    setHistory((prev) => [...prev, move.san]);
-
-    // Human move immediately board par dikhao
-    setGame(new Chess(gameCopy.fen()));
-
-    if (gameCopy.isCheckmate()) {
-      setStatus("Checkmate!");
-    }
-    else if (gameCopy.isStalemate()) {
-      setStatus("Stalemate!");
-    }
-    else if (gameCopy.isDraw()) {
-      setStatus("Draw!");
-    }
-    else {
-      setStatus("");
-    }
-
-    setThinking(true);
-
-    const response = await fetch(
-      // "http://localhost:3000/move",
-      "https://chessengine-backend.onrender.com/move",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          fen: gameCopy.fen(),
-          depth: depth,
-        }),
-      }
+    return Math.max(
+        0,
+        Math.min(100, percent)
     );
+}
 
-    const data = await response.json();
+// ── AnalysisPanel ────────────────────────────────────────────
 
-    setEngineData(data);
+function AnalysisPanel({ engineData, fetchError }) {
+    return (
+        <div className="panel-card">
+            <div className="panel-title">Engine Analysis</div>
 
-    setArrows([
-      [
-        data.bestMove.slice(0, 2),
-        data.bestMove.slice(2, 4),
-        "green",
-      ],
-    ]);
+            {fetchError && (
+                <div className="error-message">{fetchError}</div>
+            )}
 
-    console.log("ENGINE DATA:", data);
+            {engineData ? (
+                <>
+                    <div className="best-move-display">
+                        <div className="best-move-uci">
+                            {engineData.bestMove.slice(0, 2)}
+                            {" → "}
+                            {engineData.bestMove.slice(2, 4)}
+                        </div>
+                        <div className="best-move-label">Best Move</div>
+                    </div>
 
-    setThinking(false);
+                    <div className="stats-grid">
+                        <div className="stat-item">
+                            <div className="stat-label">Eval</div>
+                            <div className="stat-value">
+                                {engineData.evaluation > 0 ? "+" : ""}
+                                {engineData.evaluation.toFixed(2)}
+                            </div>
+                        </div>
 
-    // Engine move
-    const engineMove = gameCopy.move({
-      from: data.bestMove.slice(0, 2),
-      to: data.bestMove.slice(2, 4),
-      promotion: "q",
-    });
+                        <div className="stat-item">
+                            <div className="stat-label">Depth</div>
+                            <div className="stat-value">{engineData.depth}</div>
+                        </div>
 
-    if (engineMove) {
-      setHistory((prev) => [...prev, engineMove.san]);
+                        <div className="stat-item">
+                            <div className="stat-label">Nodes</div>
+                            <div className="stat-value">
+                                {engineData.nodes.toLocaleString()}
+                            </div>
+                        </div>
+
+                        <div className="stat-item">
+                            <div className="stat-label">Time</div>
+                            <div className="stat-value">{engineData.time} ms</div>
+                        </div>
+                    </div>
+
+                    {engineData.pv && (
+                        <div className="pv-line">
+                            <div className="pv-label">Principal Variation</div>
+                            <div className="pv-text">{engineData.pv}</div>
+                        </div>
+                    )}
+                </>
+            ) : (
+                !fetchError && (
+                    <p className="no-analysis">Make a move to see analysis.</p>
+                )
+            )}
+        </div>
+    );
+}
+
+// ── MoveHistory ──────────────────────────────────────────────
+
+// history is a flat array of SAN strings: [white1, black1, white2, black2, ...]
+// We display them as move pairs: 1. e4 e5 / 2. Nf3 Nc6 etc.
+function MoveHistory({ history }) {
+    // Build pairs: [[white, black?], ...]
+    const pairs = [];
+    for (let i = 0; i < history.length; i += 2) {
+        pairs.push([history[i], history[i + 1] ?? ""]);
     }
 
-    setGame(new Chess(gameCopy.fen()));
+    return (
+        <div className="panel-card">
+            <div className="panel-title">Move History</div>
 
-    if (gameCopy.isCheckmate()) {
-      setStatus("Checkmate!");
-    }
-    else if (gameCopy.isStalemate()) {
-      setStatus("Stalemate!");
-    }
-    else if (gameCopy.isDraw()) {
-      setStatus("Draw!");
-    }
-    else {
-      setStatus("");
+            {pairs.length === 0 ? (
+                <p className="no-moves">No moves yet.</p>
+            ) : (
+                <div className="move-history-scroll">
+                    {pairs.map(([white, black], idx) => (
+                        <div key={idx} className="move-pair">
+                            <span className="move-number">{idx + 1}.</span>
+                            <span className="move-san">{white}</span>
+                            <span className="move-san">{black}</span>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ── App ──────────────────────────────────────────────────────
+
+export default function App() {
+    const [game, setGame]               = useState(new Chess());
+    const [history, setHistory]         = useState([]);       // flat SAN array
+    const [positions, setPositions]     = useState([new Chess().fen()]); // FEN snapshots for undo
+    const [depth, setDepth]             = useState(4);
+    const [status, setStatus]           = useState("");
+    const [thinking, setThinking]       = useState(false);
+    const [boardOrientation, setBoardOrientation] = useState("white");
+    const [engineData, setEngineData]   = useState(null);
+    const [fetchError, setFetchError]   = useState("");
+    const [arrows, setArrows]           = useState([]);
+
+    // ── Game-over detection ────────────────────────────────
+
+    function getGameStatus(chess) {
+        if (chess.isCheckmate())  return "Checkmate!";
+        if (chess.isStalemate())  return "Stalemate!";
+        if (chess.isDraw())       return "Draw!";
+        return "";
     }
 
-    setPositions((prev) => [
-      ...prev,
-      gameCopy.fen()
-    ]);
+    // ── New game ───────────────────────────────────────────
+
+    function newGame() {
+        const fresh = new Chess();
+        setGame(fresh);
+        setHistory([]);
+        setPositions([fresh.fen()]);
+        setStatus("");
+        setEngineData(null);
+        setFetchError("");
+        setArrows([]);
+        setBoardOrientation("white");
+    }
+
+    // ── Undo (removes last full move: human + engine) ──────
+
+    function undoMove() {
+        if (positions.length <= 1) return;
+
+        const newPositions = positions.slice(0, -1);
+        const previousFen  = newPositions[newPositions.length - 1];
+
+        setPositions(newPositions);
+        setGame(new Chess(previousFen));
+        setHistory((prev) => prev.slice(0, Math.max(0, prev.length - 2)));
+        setStatus("");
+        setArrows([]);
+    }
+
+    // ── Apply a move to a Chess instance, return new instance ─
+
+    function applyMove(chess, from, to) {
+        const copy = new Chess(chess.fen());
+        const move = copy.move({ from, to, promotion: "q" });
+        return move ? { chess: copy, move } : { chess: null, move: null };
+    }
+
+    // ── Fetch engine move ──────────────────────────────────
+
+    async function fetchEngineMove(fen) {
+        const response = await fetch(API_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ fen, depth }),
+        });
+
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.error || `Server error: ${response.status}`);
+        }
+
+        return response.json();
+    }
+
+    // ── onPieceDrop ────────────────────────────────────────
+
+    async function onPieceDrop(source, target) {
+        // Apply human move
+        const { chess: afterHuman, move: humanMove } = applyMove(game, source, target);
+        if (!afterHuman) return false;
+
+        const humanSan = humanMove.san;
+
+        setGame(afterHuman);
+        setHistory((prev) => [...prev, humanSan]);
+        setStatus(getGameStatus(afterHuman));
+        setFetchError("");
+
+        if (afterHuman.isGameOver()) 
+          { setPositions((prev) => [
+              ...prev,
+              afterHuman.fen()
+          ]);
 
     return true;
-  }
+}
 
-  function undoMove() {
-    if (positions.length <= 1) {
-      return;
+        setThinking(true);
+        setArrows([]);
+
+        let data;
+        try {
+            data = await fetchEngineMove(afterHuman.fen());
+        } catch (err) {
+            setFetchError(err.message || "Engine request failed.");
+            setThinking(false);
+            return true;
+        }
+
+        setEngineData(data);
+        setThinking(false);
+
+        // Show best-move arrow
+        setArrows([
+            [
+                data.bestMove.slice(0, 2),
+                data.bestMove.slice(2, 4),
+                "green",
+            ],
+        ]);
+
+        // Apply engine move
+        const { chess: afterEngine, move: engineMove } = applyMove(
+            afterHuman,
+            data.bestMove.slice(0, 2),
+            data.bestMove.slice(2, 4)
+        );
+
+        if (!afterEngine) {
+            setFetchError("Engine returned an illegal move.");
+            return true;
+        }
+
+        setGame(afterEngine);
+        setHistory((prev) => [...prev, engineMove.san]);
+        setStatus(getGameStatus(afterEngine));
+        setPositions((prev) => [...prev, afterEngine.fen()]);
+
+        return true;
     }
 
-    const newPositions = [...positions];
-    newPositions.pop();
+    // ── Eval bar height ────────────────────────────────────
 
-    const previousFen =
-      newPositions[newPositions.length - 1];
+    const evalBarHeight = evalToBarPercent(engineData ? engineData.evaluation : 0);
 
-    setPositions(newPositions);
+    // ── Render ─────────────────────────────────────────────
 
-    setGame(new Chess(previousFen));
+    return (
+        <div className="app">
 
-    setHistory((prev) =>
-    prev.slice(0, Math.max(0, prev.length - 2))
-  );
-  }
+            {/* Header */}
+            <header className="app-header">
+                <h1 className="app-title">♟ Shreeram Engine</h1>
+                <p className="app-subtitle">
+                    C++ Engine · Alpha-Beta · Quiescence · TT · Zobrist · UCI
+                </p>
+            </header>
 
-  return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "#121212",
-        color: "white",
-        padding: "20px",
-      }}
-    >
-    <div style={{ marginBottom: "25px" }}>
-  <h1
-    style={{
-      fontSize: "42px",
-      margin: 0,
-    }}
-  >
-    ♟️ Shreeram Engine
-  </h1>
+            {/* Toolbar */}
+            <div className="toolbar">
+                <button className="btn" onClick={newGame}>
+                    New Game
+                </button>
 
-  <p
-    style={{
-      color: "#999",
-      marginTop: "8px",
-    }}
-  >
-    Custom C++ Chess Engine • Alpha-Beta • TT • Zobrist • UCI
-  </p>
-</div>
-    <div
-      style={{
-        marginBottom: "20px",
-        display: "flex",
-        gap: "10px",
-        alignItems: "center",
-        flexWrap: "wrap",
-      }}
-    >
-      <button
-        onClick={newGame}
-        style={{
-          padding: "8px 15px",
-          cursor: "pointer",
-          background: "#2a2a2a",
-          color: "white",
-          border: "1px solid #444",
-          borderRadius: "8px",
-        }}
-      >
-        New Game
-      </button>
+                <button
+                    className="btn"
+                    onClick={() =>
+                        setBoardOrientation((o) =>
+                            o === "white" ? "black" : "white"
+                        )
+                    }
+                >
+                    Flip Board
+                </button>
 
-      <button
-          onClick={() =>
-            setBoardOrientation(
-              boardOrientation === "white"
-                ? "black"
-                : "white"
-            )
-          }
-          style={{
-            padding: "8px 15px",
-            cursor: "pointer",
-            background: "#2a2a2a",
-            color: "white",
-            border: "1px solid #444",
-            borderRadius: "8px",
-          }}
-        >
-        Flip Board
-      </button>
+                <button className="btn" onClick={undoMove}>
+                    Undo Move
+                </button>
 
-      <button
-        onClick={undoMove}
-        style={{
-          padding: "8px 15px",
-          cursor: "pointer",
-          background: "#2a2a2a",
-          color: "white",
-          border: "1px solid #444",
-          borderRadius: "8px",
-        }}
-      >
-        Undo Move
-      </button>
-
-      <div>
-        <label>Difficulty: </label>
-
-        <select
-          value={depth}
-          onChange={(e) =>
-            setDepth(Number(e.target.value))
-          }
-        >
-          <option value={2}>Easy</option>
-          <option value={4}>Medium</option>
-          <option value={6}>Hard</option>
-        </select>
-      </div>
-    </div>
-
-    {thinking && (
-      <h2 style={{ color: "orange" }}>
-        Engine Thinking...
-      </h2>
-    )}
-
-    <div
-      style={{
-        background: "#2a2a2a",
-        color: "white",
-        border: "1px solid #444",
-        borderRadius: "6px",
-        padding: "5px",
-      }}
-    >
-      {/* BOARD */}
-    
-      {/* BOARD */}
-      <div
-        style={{
-          display: "flex",
-          gap: "12px",
-        }}
-      >
-        {/* Evaluation Bar */}
-        <div
-          style={{
-            width: "35px",
-            height: "600px",
-            background: "#222",
-            borderRadius: "8px",
-            overflow: "hidden",
-            border: "1px solid #444",
-            position: "relative",
-          }}
-        >
-          <div
-            style={{
-              position: "absolute",
-              bottom: 0,
-              width: "100%",
-              background: "white",
-              height: `${
-                engineData
-                  ? Math.max(
-                      0,
-                      Math.min(
-                        100,
-                        50 +
-                          engineData.evaluation * 10
-                      )
-                    )
-                  : 50
-              }%`,
-            }}
-          />
-        </div>
-
-        <div>
-          <Chessboard
-            boardWidth={600}
-            position={game.fen()}
-            onPieceDrop={onPieceDrop}
-            boardOrientation={boardOrientation}
-            arePiecesDraggable={!thinking}
-            customArrows={arrows}
-          />
-
-          {status && (
-            <h2 style={{ color: "#ff4d4d" }}>
-              {status}
-            </h2>
-          )}
-        </div>
-      </div>
-
-      {/* ANALYSIS PANEL */}
-      <div
-        style={{
-          minWidth: "320px",
-          background: "#1e1e1e",
-          border: "1px solid #444",
-          borderRadius: "10px",
-          padding: "15px",
-        }}
-      >
-        <h2>Engine Analysis</h2>
-
-        <h2 style={{ marginTop: 0 }}>
-          Engine Analysis
-        </h2>
-
-        {engineData ? (
-          <>
-            <div
-              style={{
-                background: "#111",
-                padding: "15px",
-                borderRadius: "8px",
-                marginBottom: "15px",
-              }}
-            >
-              <div
-                style={{
-                  color: "#4ade80",
-                  fontSize: "28px",
-                  fontWeight: "bold",
-                }}
-              >
-                {engineData.bestMove.slice(0, 2)}
-                →
-                {engineData.bestMove.slice(2, 4)}
-              </div>
-
-              <div
-                style={{
-                  color: "#999",
-                  marginTop: "5px",
-                }}
-              >
-                Suggested Move
-              </div>
+                <div>
+                    <span className="difficulty-label">Difficulty:</span>
+                    <select
+                        className="difficulty-select"
+                        value={depth}
+                        onChange={(e) => setDepth(Number(e.target.value))}
+                    >
+                        <option value={2}>Easy</option>
+                        <option value={4}>Medium</option>
+                        <option value={6}>Hard</option>
+                    </select>
+                </div>
             </div>
 
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns:
-                  "1fr 1fr",
-                gap: "10px",
-              }}
-            >
-              <div>
-                <strong>Eval</strong>
-                <br />
-                {engineData.evaluation}
-              </div>
-
-              <div>
-                <strong>Depth</strong>
-                <br />
-                {engineData.depth}
-              </div>
-
-              <div>
-                <strong>Nodes</strong>
-                <br />
-                {engineData.nodes.toLocaleString()}
-              </div>
-
-              <div>
-                <strong>Time</strong>
-                <br />
-                {engineData.time} ms
-              </div>
+            {/* Thinking indicator (reserved height to prevent layout shift) */}
+            <div className="thinking-indicator">
+                {thinking && "Engine thinking…"}
             </div>
-          </>
-        ) : (
-          <p>No analysis yet.</p>
-        )}
 
-        <hr />
+            {/* Board row */}
+            <div className="board-and-sidebar">
 
-        <h2>Move History</h2>
+                {/* Evaluation bar */}
+                <div className="eval-bar-wrap">
+                    <div
+                        className="eval-bar-fill"
+                        style={{ height: `${evalBarHeight}%` }}
+                    />
+                </div>
 
-        <div
-          style={{
-            maxHeight: "300px",
-            overflowY: "auto",
-          }}
-        >
-          {history.map((move, index) => (
-            <div key={index}>
-              {index + 1}. {move}
+                {/* Board */}
+                <div className="board-column">
+                    <div className="board-wrapper">
+                        <Chessboard
+                            boardWidth={600}
+                            position={game.fen()}
+                            onPieceDrop={onPieceDrop}
+                            boardOrientation={boardOrientation}
+                            arePiecesDraggable={!thinking}
+                            customArrows={arrows}
+                        />
+                    </div>
+
+                    {status && (
+                        <div className="game-status">{status}</div>
+                    )}
+                </div>
+
+                {/* Sidebar */}
+                <div className="sidebar">
+                    <AnalysisPanel
+                        engineData={engineData}
+                        fetchError={fetchError}
+                    />
+                    <MoveHistory history={history} />
+                </div>
+
             </div>
-          ))}
         </div>
-      </div>
-    </div>
-  </div>
-);
+    );
 }
-export default App;
