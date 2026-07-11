@@ -1,6 +1,16 @@
 # Shreeram Engine
 
-A Perft-validated chess engine written from scratch in C++, featuring alpha-beta search, transposition tables, Zobrist hashing, and a full-stack web interface connected through a custom UCI bridge.
+A Perft-validated chess engine written from scratch in **C++20**, featuring Alpha-Beta Pruning, Quiescence Search, Transposition Tables, Zobrist Hashing, and a full-stack web interface communicating through a custom UCI-based bridge.
+
+---
+
+## At a Glance
+
+- Perft-validated through depth 5 (**4,865,609** canonical positions)
+- Reduced search nodes by **86%** (**9,322 → 1,303**) using Alpha-Beta Pruning
+- Full-stack web interface connected to the C++ engine through a custom UCI bridge
+
+---
 
 ## Live Demo
 
@@ -13,9 +23,11 @@ A Perft-validated chess engine written from scratch in C++, featuring alpha-beta
 
 ![Chess Engine UI](screenshots/chess-engine-ui.png)
 
+---
+
 ## Correctness Validation
 
-Move generation correctness was verified using **Perft** — a standard chess-engine testing technique that counts the exact number of reachable positions at each depth from the starting position. Matching known-correct values at depth 5 validates every rule: castling, en passant, promotion, check evasion, and pin detection.
+Move generation correctness was verified using **Perft** — a standard chess-engine testing technique that counts the exact number of reachable positions at each depth from the starting position. Matching the canonical starting-position Perft values through depth 5 provides strong validation of the engine's legal move generation and core chess rules. Additional edge-case positions are discussed under **Known Limitations**.
 
 | Depth | Nodes | Status |
 |------:|------:|:------:|
@@ -82,6 +94,17 @@ Negamax alpha-beta with iterative deepening. The engine searches depth 1 through
 
 Quiescence search runs at leaf nodes, extending the search through captures until a quiet position is reached. This eliminates the horizon effect where the engine misses a recapture one ply beyond its nominal depth.
 
+### Search Efficiency
+
+Alpha-Beta pruning was benchmarked against plain Minimax using the same position and search depth.
+
+| Search | Nodes |
+|--------|------:|
+| Plain Minimax (Depth 3) | **9,322** |
+| Alpha-Beta (Depth 3) | **1,303** |
+
+This reduced the search space by approximately **86% (7.15× fewer nodes)** while producing the same search result.
+
 ### Move Ordering
 
 The quality of move ordering determines how many nodes alpha-beta prunes. The engine applies four ordering layers:
@@ -91,11 +114,55 @@ The quality of move ordering determines how many nodes alpha-beta prunes. The en
 3. **Killer moves** — two quiet moves per ply that caused a beta cutoff in a sibling node
 4. **History heuristic** — quiet moves scored by how often they caused cutoffs across the entire search, indexed by `[from][to]`
 
+### Benchmark
+
+| Configuration | Nodes |
+|--------------|------:|
+| Alpha-Beta | **18,445** |
+| Alpha-Beta + Move Ordering | **12,222** |
+
+Move ordering reduced explored nodes by approximately **34%** for the tested position and search depth.
+
 ### Transposition Table
 
 Zobrist hashing assigns each position a 64-bit hash updated incrementally. The transposition table stores `(hash, depth, score, flag)` where flag is one of `Exact | LowerBound | UpperBound`. On a TT hit at sufficient depth, the cached score replaces the subtree search entirely.
 
 This also makes iterative deepening efficient: positions searched at earlier depths are reused through TT hits during deeper iterations, reducing redundant work and improving move ordering.
+
+The performance impact of the Transposition Table has not yet been isolated through dedicated ablation benchmarks and is planned as future work.
+
+---
+
+## Performance Benchmarks
+
+Benchmarks were collected on the current single-threaded implementation under release build settings.
+> Hardware: Apple M1 • clang++ • Release build (-O2)
+
+| Benchmark | Result |
+|-----------|-------:|
+| Alpha-Beta Reduction | **9,322 → 1,303 nodes (86%)** |
+| Move Ordering | **18,445 → 12,222 nodes (34%)** |
+| Depth 5 Search | **98,632 nodes · 108 ms** |
+| Depth 6 Search | **703,446 nodes · 330 ms** |
+
+> These measurements are intended as engineering benchmarks rather than engine-strength comparisons. Future work includes standardized NPS measurement and isolated Transposition Table benchmarking.
+
+## Known Limitations
+
+The engine matches the canonical Perft values for the starting position through depth 5.
+
+It does not yet match the standard **Kiwipete** Perft position (expected **97,862** nodes, current implementation returns **86,398**), indicating a remaining edge-case bug, most likely related to castling-right propagation or another special-move legality case.
+
+This issue is intentionally left unresolved for now and will be revisited after the completion of the next systems project.
+
+## Future Work
+
+- Fix the remaining Kiwipete edge-case bug
+- Benchmark Transposition Table and Zobrist Hashing independently
+- Add standardized Nodes-Per-Second (NPS) benchmarking
+- Improve evaluation (Piece-Square Tables, Mobility, King Safety)
+- Implement stronger search optimizations (Null Move Pruning, PVS, Aspiration Windows)
+- Explore SMP / Multithreaded search
 
 ---
 
@@ -177,7 +244,13 @@ npm run dev
 
 **Shreeram Goliya**
 
-- ICPC Chennai Regionals — Rank 21
+- ICPC Asia Chennai Regional — Rank 21 (Highest-ranked team among all NITs)
+- ICPC Asia Amritapuri Regional — Rank 114
 - ICPC India Preliminary — AIR 175
-- [Codeforces Expert](https://codeforces.com/profile/shreeram77)
-- [CodeChef 5★](https://www.codechef.com/users/shriramgoliya)
+- [Codeforces Expert (1827) ](https://codeforces.com/profile/shreeram77)
+- [CodeChef 5★ (2047) ](https://www.codechef.com/users/shriramgoliya)
+
+
+---
+
+If you have suggestions, benchmark ideas, or would like to discuss chess engine design or systems programming, feel free to open an issue or connect with me.
